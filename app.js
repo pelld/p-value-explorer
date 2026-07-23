@@ -21,6 +21,7 @@ $$(".range-button").forEach(button => button.addEventListener("click", () => {
   state.chartRange = Number(button.dataset.range);
   if (state.results) drawChart(state.results.extractions);
 }));
+$("#date-range-option").addEventListener("change", toggleCustomYears);
 $("#evidence-filter").addEventListener("change", () => state.results && renderEvidence(state.results.extractions));
 $("#download-button").addEventListener("click", downloadCsv);
 
@@ -31,11 +32,13 @@ async function runSearch() {
   const topic = $("#topic").value.trim();
   if (!topic) return;
 
-  const fromYear = $("#from-year").value;
-  const toYear = $("#to-year").value;
+  const dateOption = $("#date-range-option").value;
+  const currentYear = new Date().getFullYear();
+  const fromYear = dateOption === "10" ? String(currentYear - 9) : dateOption === "custom" ? $("#from-year").value : "";
+  const toYear = dateOption === "10" ? String(currentYear) : dateOption === "custom" ? $("#to-year").value : "";
   if (fromYear && toYear && Number(fromYear) > Number(toYear)) return setStatus("The start year must be before the end year.", true);
 
-  const options = { topic, fromYear, toYear, maxResults: Number($("#max-results").value) };
+  const options = { topic, dateOption, fromYear, toYear, maxResults: Number($("#max-results").value) };
   const cacheKey = CACHE_PREFIX + JSON.stringify(options).toLowerCase();
   setLoading(true);
 
@@ -60,10 +63,10 @@ async function runSearch() {
 }
 
 async function fetchPubMed({ topic, fromYear, toYear, maxResults }) {
-  let term = `(${topic}) AND hasabstract`;
+  let term = `(${topic}[Title/Abstract]) AND hasabstract`;
   if (fromYear || toYear) term += ` AND (${fromYear || "1800"}:${toYear || new Date().getFullYear()}[pdat])`;
 
-  const searchParams = new URLSearchParams({ db: "pubmed", term, retmode: "json", retmax: String(maxResults), sort: "pub date", tool: "pvalue_explorer" });
+  const searchParams = new URLSearchParams({ db: "pubmed", term, retmode: "json", retmax: String(maxResults), sort: "relevance", tool: "pvalue_explorer" });
   const searchResponse = await fetch(`${API_BASE}/esearch.fcgi?${searchParams}`);
   if (!searchResponse.ok) throw new Error(`PubMed search failed (${searchResponse.status}).`);
   const searchData = await searchResponse.json();
@@ -120,6 +123,7 @@ function renderResults(data, topic) {
   const matchedPmids = new Set(data.extractions.map(item => item.pmid));
   const years = data.articles.map(item => Number(item.year)).filter(Boolean);
   $("#result-title").textContent = `“${topic}”`;
+  $("#total-matches").textContent = data.totalFound.toLocaleString("en-GB");
   $("#articles-searched").textContent = data.articles.length.toLocaleString("en-GB");
   $("#articles-matched").textContent = matchedPmids.size.toLocaleString("en-GB");
   $("#values-found").textContent = data.extractions.length.toLocaleString("en-GB");
@@ -193,18 +197,25 @@ function renderSignal(extractions) {
 // ============================================================
 function renderEvidence(extractions) {
   const filter = $("#evidence-filter").value;
-  const items = extractions.filter(item => filter === "all" || (filter === "exact" ? item.exact : !item.exact));
-  if (!items.length) {
+  const filtered = extractions.filter(item => filter === "all" || (filter === "exact" ? item.exact : !item.exact));
+  const articles = [...filtered.reduce((groups, item) => {
+    if (!groups.has(item.pmid)) groups.set(item.pmid, { ...item, values: [] });
+    groups.get(item.pmid).values.push(item);
+    return groups;
+  }, new Map()).values()];
+
+  if (!articles.length) {
     $("#evidence-list").innerHTML = `<p class="empty">${extractions.length ? "No results match this filter." : "No p-values were detected in the retrieved abstracts."}</p>`;
     return;
   }
-  $("#evidence-list").innerHTML = items.slice(0, 250).map(item => `
+
+  $("#evidence-list").innerHTML = articles.map(article => `
     <article class="evidence-item">
-      <span class="p-badge ${item.exact ? "" : "threshold"}">${escapeHtml(item.raw)}</span>
+      <div class="p-badge-group">${article.values.map(item => `<span class="p-badge ${item.exact ? "" : "threshold"}">${escapeHtml(item.raw)}</span>`).join("")}</div>
       <div class="evidence-content">
-        <h4><a href="https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(item.pmid)}/" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a></h4>
-        <p>…${escapeHtml(item.snippetBefore)}<mark>${escapeHtml(item.raw)}</mark>${escapeHtml(item.snippetAfter)}…</p>
-        <span class="evidence-meta">${escapeHtml([item.journal, item.year, `PMID ${item.pmid}`].filter(Boolean).join(" · "))}</span>
+        <h4><a href="https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(article.pmid)}/" target="_blank" rel="noreferrer">${escapeHtml(article.title)}</a></h4>
+        <div class="article-snippets">${article.values.map(item => `<p>…${escapeHtml(item.snippetBefore)}<mark>${escapeHtml(item.raw)}</mark>${escapeHtml(item.snippetAfter)}…</p>`).join("")}</div>
+        <span class="evidence-meta">${escapeHtml([article.journal, article.year, `PMID ${article.pmid}`, `${article.values.length} value${article.values.length === 1 ? "" : "s"}`].filter(Boolean).join(" · "))}</span>
       </div>
     </article>`).join("");
 }
@@ -223,6 +234,11 @@ function downloadCsv() {
 // ============================================================
 // 07. SMALL SHARED HELPERS
 // ============================================================
+function toggleCustomYears() {
+  const custom = $("#date-range-option").value === "custom";
+  $(".custom-year").forEach(label => label.hidden = !custom);
+}
+
 function readCache(key) {
   try {
     const cached = JSON.parse(localStorage.getItem(key));
