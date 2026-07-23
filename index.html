@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explore p-values reported in PubMed abstracts for a chosen research topic.">
+  <title>P-Value Explorer</title>
+  <link rel="preconnect" href="https://cdn.plot.ly">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.plot.ly/plotly-3.0.1.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <!-- ============================================================
+       00. SITE HEADER
+       ============================================================ -->
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="P-Value Explorer home">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      <span>P-Value Explorer</span>
+    </a>
+    <a class="method-link" href="#method">How it works</a>
+  </header>
+
+  <main>
+    <!-- ============================================================
+         01. INTRODUCTION AND PUBMED SEARCH
+         ============================================================ -->
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Evidence patterns in the literature</p>
+        <h1>What do reported <em>p</em>-values look like in your field?</h1>
+        <p class="lede">Search PubMed abstracts, extract reported <em>p</em>-values and inspect the distribution around the conventional 0.05 threshold.</p>
+      </div>
+
+      <form id="search-form" class="search-panel">
+        <label for="topic">Research topic</label>
+        <div class="search-row">
+          <input id="topic" name="topic" type="search" placeholder="e.g. antidepressants" autocomplete="off" maxlength="120" required>
+          <button id="search-button" type="submit">Explore evidence</button>
+        </div>
+        <div class="examples" aria-label="Example searches">
+          <span>Try</span>
+          <button type="button" class="topic-chip">antidepressants</button>
+          <button type="button" class="topic-chip">power posing</button>
+          <button type="button" class="topic-chip">growth mindset</button>
+        </div>
+        <details class="options">
+          <summary>Search options</summary>
+          <div class="option-grid">
+            <label>From year <input id="from-year" type="number" min="1900" max="2100" placeholder="Any"></label>
+            <label>To year <input id="to-year" type="number" min="1900" max="2100" placeholder="Latest"></label>
+            <label>Maximum articles
+              <select id="max-results">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+              </select>
+            </label>
+          </div>
+        </details>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <!-- ============================================================
+         02. SEARCH RESULTS AND SUMMARY METRICS
+         ============================================================ -->
+    <section id="results" class="results" hidden>
+      <div class="result-heading">
+        <div>
+          <p class="eyebrow">PubMed abstract results</p>
+          <h2 id="result-title">Results</h2>
+        </div>
+        <button id="download-button" class="secondary-button" type="button">Download CSV</button>
+      </div>
+
+      <div class="metrics">
+        <article><span id="articles-searched">—</span><p>Abstracts searched</p></article>
+        <article><span id="articles-matched">—</span><p>With reported <em>p</em>-values</p></article>
+        <article><span id="values-found">—</span><p>Values extracted</p></article>
+        <article><span id="date-range">—</span><p>Publication range</p></article>
+      </div>
+
+      <!-- 02A. Histogram and descriptive signal -->
+      <div class="dashboard-grid">
+        <article class="card chart-card">
+          <div class="card-heading">
+            <div>
+              <h3>Distribution of reported <em>p</em>-values</h3>
+              <p>Exact values between 0 and 0.10. The shaded band marks 0.045–0.050.</p>
+            </div>
+            <div class="chart-controls" role="group" aria-label="Chart range">
+              <button class="range-button active" data-range="0.1" type="button">0–0.10</button>
+              <button class="range-button" data-range="1" type="button">0–1.00</button>
+            </div>
+          </div>
+          <div id="chart" class="chart" aria-label="Histogram of extracted p-values"></div>
+        </article>
+
+        <aside class="card signal-card">
+          <span id="signal-icon" class="signal-icon">?</span>
+          <p class="eyebrow">Pattern near 0.05</p>
+          <h3 id="signal-title">Not yet assessed</h3>
+          <p id="signal-copy">Run a search to inspect the reported values.</p>
+          <div class="band-comparison">
+            <div><span id="below-count">—</span><small>0.045–0.050</small></div>
+            <div><span id="above-count">—</span><small>0.050–0.055</small></div>
+          </div>
+          <p class="signal-note">This is a descriptive flag, not a statistical test or evidence of misconduct.</p>
+        </aside>
+      </div>
+
+      <!-- 02B. Auditable abstract evidence -->
+      <article class="card evidence-card">
+        <div class="card-heading">
+          <div>
+            <h3>Extracted evidence</h3>
+            <p>Check each result in context. Inequalities are shown but excluded from the histogram because their exact value is unknown.</p>
+          </div>
+          <label class="filter-label">Show
+            <select id="evidence-filter">
+              <option value="all">All extracted results</option>
+              <option value="exact">Exact values only</option>
+              <option value="threshold">Thresholds only</option>
+            </select>
+          </label>
+        </div>
+        <div id="evidence-list" class="evidence-list"></div>
+      </article>
+    </section>
+
+    <!-- ============================================================
+         03. METHOD AND INTERPRETATION CAVEATS
+         ============================================================ -->
+    <section id="method" class="method-section">
+      <div>
+        <p class="eyebrow">Read this before interpreting</p>
+        <h2>A useful signal, with firm limits</h2>
+      </div>
+      <div class="caveats">
+        <article><span>01</span><h3>Abstracts are incomplete</h3><p>Many papers report results only in the full text or tables, so this search will miss them.</p></article>
+        <article><span>02</span><h3>Not a formal p-curve</h3><p>The tool cannot reliably distinguish primary hypothesis tests from secondary, adjusted or descriptive analyses.</p></article>
+        <article><span>03</span><h3>Patterns are not proof</h3><p>A concentration near 0.05 can have several causes. It does not establish publication bias or misconduct by any study.</p></article>
+        <article><span>04</span><h3>Fields report differently</h3><p>Reporting conventions, study designs and typical statistical power vary substantially between topics.</p></article>
+      </div>
+      <p class="method-detail">The app searches PubMed using NCBI E-utilities, retrieves up to 200 abstracts, and recognises common forms such as <code>p = .03</code>, <code>p&lt;0.05</code> and <code>P ≥ 0.10</code>. Searches are cached in your browser for seven days.</p>
+    </section>
+  </main>
+
+  <!-- ============================================================
+       04. SITE FOOTER
+       ============================================================ -->
+  <footer>
+    <p>P-Value Explorer · An exploratory literature-mining tool</p>
+    <p>Data from <a href="https://pubmed.ncbi.nlm.nih.gov/" target="_blank" rel="noreferrer">PubMed</a></p>
+  </footer>
+</body>
+</html>
