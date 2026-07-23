@@ -48,13 +48,20 @@
         <details class="options">
           <summary>Search options</summary>
           <div class="option-grid">
-            <label>From year <input id="from-year" type="number" min="1900" max="2100" placeholder="Any"></label>
-            <label>To year <input id="to-year" type="number" min="1900" max="2100" placeholder="Latest"></label>
-            <label>Maximum articles
+            <label>Date range
+              <select id="date-range-option">
+                <option value="all" selected>All years</option>
+                <option value="10">Last 10 years</option>
+                <option value="custom">Custom range</option>
+              </select>
+            </label>
+            <label class="custom-year" hidden>From year <input id="from-year" type="number" min="1900" max="2100" placeholder="Any"></label>
+            <label class="custom-year" hidden>To year <input id="to-year" type="number" min="1900" max="2100" placeholder="Latest"></label>
+            <label>Maximum abstracts
               <select id="max-results">
                 <option value="50">50</option>
-                <option value="100" selected>100</option>
-                <option value="200">200</option>
+                <option value="100">100</option>
+                <option value="200" selected>200</option>
               </select>
             </label>
           </div>
@@ -76,8 +83,9 @@
       </div>
 
       <div class="metrics">
-        <article><span id="articles-searched">—</span><p>Abstracts searched</p></article>
-        <article><span id="articles-matched">—</span><p>With reported <em>p</em>-values</p></article>
+        <article><span id="total-matches">—</span><p>Total PubMed matches</p></article>
+        <article><span id="articles-searched">—</span><p>Abstracts examined</p></article>
+        <article><span id="articles-matched">—</span><p>Abstracts with <em>p</em>-values</p></article>
         <article><span id="values-found">—</span><p>Values extracted</p></article>
         <article><span id="date-range">—</span><p>Publication range</p></article>
       </div>
@@ -116,7 +124,7 @@
         <div class="card-heading">
           <div>
             <h3>Extracted evidence</h3>
-            <p>Check each result in context. Inequalities are shown but excluded from the histogram because their exact value is unknown.</p>
+            <p>Each abstract appears once, with all its extracted values grouped together. Inequalities are excluded from the histogram because their exact value is unknown.</p>
           </div>
           <label class="filter-label">Show
             <select id="evidence-filter">
@@ -144,7 +152,7 @@
         <article><span>03</span><h3>Patterns are not proof</h3><p>A concentration near 0.05 can have several causes. It does not establish publication bias or misconduct by any study.</p></article>
         <article><span>04</span><h3>Fields report differently</h3><p>Reporting conventions, study designs and typical statistical power vary substantially between topics.</p></article>
       </div>
-      <p class="method-detail">The app searches PubMed using NCBI E-utilities, retrieves up to 200 abstracts, and recognises common forms such as <code>p = .03</code>, <code>p&lt;0.05</code> and <code>P ≥ 0.10</code>. Searches are cached in your browser for seven days.</p>
+      <p class="method-detail">The app searches PubMed titles and abstracts by relevance using NCBI E-utilities, retrieves up to 200 abstracts, and recognises common forms such as <code>p = .03</code>, <code>p&lt;0.05</code> and <code>P ≥ 0.10</code>. Searches are cached in your browser for seven days.</p>
     </section>
   </main>
 
